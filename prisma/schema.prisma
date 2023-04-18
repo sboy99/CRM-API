@@ -9,3 +9,148 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+// Authorization
+
+model User {
+  id         String    @id @default(uuid())
+  name       String
+  email      String    @unique()
+  phone      String    @unique()
+  password   String
+  gender     Gender    @default(Others)
+  isVerified Boolean   @default(false) @map("is_verified")
+  avatar     String?   @default("")
+  balance    Int       @default(0)
+  role       Role      @default(customer)
+  Session    Session?
+  Employee   Employee?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt()
+  Account    Account[]
+
+  @@map("users")
+}
+
+enum Gender {
+  Male
+  Female
+  Others
+}
+
+enum Role {
+  customer
+  associate
+  employee
+  admin
+}
+
+model Session {
+  id          String   @id @default(uuid())
+  userId      String   @unique() @map("user_id")
+  User        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshHash String   @map("refresh_hash")
+  isBlocked   Boolean  @default(false) @map("is_blocked")
+  ip          String   @map("ip_address")
+  userAgent   String   @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt() @map("updated_at")
+
+  @@map("sessions")
+}
+
+// Common
+
+model Account {
+  id            String   @id @default(uuid())
+  bankName      String   @map("bank_name")
+  ifscCode      String   @map("ifsc_code")
+  accountNumber String   @unique() @map("account_number")
+  userId        String   @map("user_id")
+  User          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt() @map("updated_at")
+}
+
+// Employee Group
+
+model Employee {
+  id             String          @id @default(uuid())
+  userId         String          @unique() @map("user_id")
+  reportTo       String          @map("report_to")
+  dob            DateTime        @map("date_of_birth")
+  User           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salarySchemeId String          @unique() @map("salary_scheme_id")
+  SalaryScheme   SalaryScheme    @relation(fields: [salarySchemeId], references: [id])
+  designationId  String          @map("designation_id")
+  Designation    Designation     @relation(fields: [designationId], references: [id])
+  Qualification  Qualification[]
+  Leave          Leave?
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt() @map("updated_at")
+
+  @@map("employees")
+}
+
+model Qualification {
+  id            String   @id @default(uuid())
+  employeeId    String   @map("employee_id")
+  Employee      Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  degreeName    String   @map("degree_name")
+  yearOfPass    Int      @map("year_of_pass")
+  instituteName String   @map("institute_name")
+  marks         Float
+  documentUrl   String   @map("document_url")
+
+  @@map("qualifications")
+}
+
+model Designation {
+  id             String     @id @default(uuid())
+  title          String
+  departmentName String     @map("department_name")
+  createdAt      String     @map("created_at")
+  updatedAt      String     @map("updated_at")
+  Employee       Employee[]
+
+  @@map("designations")
+}
+
+model SalaryScheme {
+  id         String    @id @default(uuid())
+  basic      Float
+  hra        Float
+  conveyance Float
+  medical    Float
+  special    Float
+  pf         Float
+  insurance  Float
+  tax        Float
+  Employee   Employee?
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt() @map("updated_at")
+
+  @@map("salary_schemes")
+}
+
+model Leave {
+  id          String   @id @default(uuid())
+  employeeId  String   @unique() @map("employee_id")
+  Employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  annual      Int
+  casual      Int
+  sick        Int
+  maternity   Int
+  bereavement Int
+  others      Int
+
+  @@map("leaves")
+}
+
+model Holiday {
+  id          String   @id @default(uuid())
+  title       String
+  holidayDate DateTime @map("holoday_date")
+
+  @@map("holidays")
+}
