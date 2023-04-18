@@ -59,6 +59,13 @@ model Session {
   @@map("sessions")
 }
 
+model Otp {
+  id             String   @id @default(uuid())
+  phone          String
+  otp            String
+  expirationDate DateTime @map("expiration_date")
+}
+
 // Common
 
 model Account {
