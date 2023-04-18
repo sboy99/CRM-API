@@ -11,6 +11,7 @@ import { LoginUserDto } from './dtos/login-user.dto';
 import { RegisterUserDto } from './dtos/register-user.dto';
 import { SessionService } from './session/session.service';
 import { TResponse } from './types/response.type';
+import { TwilioService } from '../twilio/twilio.service';
 
 @Injectable()
 export class AuthService {
@@ -20,6 +21,7 @@ export class AuthService {
     private readonly hashService: HashService,
     private readonly sessionService: SessionService,
     private readonly configService: ConfigService,
+    private readonly twilioService: TwilioService,
   ) {}
   /**
    *
@@ -47,12 +49,17 @@ export class AuthService {
         phone: registerUserDto.phone,
       },
     });
-    // send verification email
-    await this.mailService.sendVerificationEmail({
-      to: user.email,
-      name: user.name,
-      callbaclUrl: `test`,
-    });
+    if (user.phone) {
+      // send verification code
+      await this.twilioService.sendVerificationCodeSMS(user.phone);
+    } else {
+      // send verification email
+      await this.mailService.sendVerificationEmail({
+        to: user.email,
+        name: user.name,
+        callbaclUrl: `test`,
+      });
+    }
 
     return {
       message:

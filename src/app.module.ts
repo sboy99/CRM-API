@@ -6,6 +6,7 @@ import { UserModule } from './resources/user/user.module';
 import { MailService } from './resources/mail/mail.service';
 import { MailModule } from './resources/mail/mail.module';
 import { HashModule } from './resources/hash/hash.module';
+import { TwilioModule } from './resources/twilio/twilio.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { HashModule } from './resources/hash/hash.module';
     UserModule,
     MailModule,
     HashModule,
+    TwilioModule,
   ],
   controllers: [],
   providers: [MailService],
