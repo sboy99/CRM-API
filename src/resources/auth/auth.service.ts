@@ -7,11 +7,12 @@ import { ConfigService } from '@nestjs/config';
 import { HashService } from '../hash/hash.service';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { TwilioService } from '../twilio/twilio.service';
+import { TResponse } from '../types/response.type';
 import { LoginUserDto } from './dtos/login-user.dto';
 import { RegisterUserDto } from './dtos/register-user.dto';
 import { SessionService } from './session/session.service';
-import { TResponse } from './types/response.type';
-import { TwilioService } from '../twilio/twilio.service';
+import { TokenService } from './token/token.service';
 
 @Injectable()
 export class AuthService {
@@ -22,6 +23,7 @@ export class AuthService {
     private readonly sessionService: SessionService,
     private readonly configService: ConfigService,
     private readonly twilioService: TwilioService,
+    private readonly tokenService: TokenService,
   ) {}
   /**
    *
@@ -49,17 +51,21 @@ export class AuthService {
         phone: registerUserDto.phone,
       },
     });
-    if (user.phone) {
-      // send verification code
-      await this.twilioService.sendVerificationCodeSMS(user.phone);
-    } else {
-      // send verification email
-      await this.mailService.sendVerificationEmail({
-        to: user.email,
-        name: user.name,
-        callbaclUrl: `test`,
-      });
-    }
+    // generate verification token
+    const verificationToken = await this.tokenService.generateVerificationToken(
+      {
+        userId: user.id,
+        email: user.email,
+      },
+    );
+    // send verification email
+    await this.mailService.sendVerificationEmail({
+      to: user.email,
+      name: user.name,
+      verificationUrl: `${this.configService.get(
+        'ORIGIN',
+      )}/auth/verify-email?token=${verificationToken}`,
+    });
 
     return {
       message:
@@ -71,7 +77,19 @@ export class AuthService {
    *
    * @returns response
    */
-  async loginUser(loginUserDto: LoginUserDto): Promise<TResponse> {
+  async loginUser(
+    loginUserDto: LoginUserDto,
+    ip: string,
+    userAgent: string,
+  ): Promise<
+    TResponse<
+      unknown,
+      {
+        accessToken: string;
+        refreshToken: string;
+      }
+    >
+  > {
     //  find the user
     const user = await this.prisma.user.findFirst({
       where: {
@@ -79,30 +97,66 @@ export class AuthService {
       },
     });
     if (!user) throw new NotFoundException('User does not exist');
+    if (!user.isVerified)
+      throw new BadRequestException('Please verify your email');
     // compare password
     const isPasswordMatch = await this.hashService.compareHash(
       loginUserDto.password,
       user.password,
     );
     if (!isPasswordMatch) throw new BadRequestException('Wrong password');
-    //todo: create a active session
-    // const session = await this.sessionService.createSession({
-    //   userId: user.id,
-    //   ip:
-    // });
+
+    // generate auth tokens
+    const authTokens = await this.tokenService.generateAuthTokens({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+    });
+    //  create a active session
+    await this.sessionService.createSession({
+      userId: user.id,
+      ip,
+      userAgent,
+      refreshToken: authTokens.refreshToken,
+    });
 
     return {
       message: 'Login Successfull!',
       status: 200,
+      tokens: authTokens,
     };
   }
   /**
    *
    * @returns response
    */
-  async logoutUser(): Promise<TResponse> {
+  async logoutUser(ip: string, userAgent: string): Promise<TResponse> {
     return {
       message: 'Logging out user',
+      status: 200,
+    };
+  }
+
+  async verifyEmail(token: string): Promise<TResponse> {
+    const payload = await this.tokenService.getDecodedToken(token);
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: payload.userId,
+        email: payload.email,
+      },
+    });
+    if (!user) throw new BadRequestException('Verification failed');
+    // set verified user
+    await this.prisma.user.update({
+      where: {
+        email: payload.email,
+      },
+      data: {
+        isVerified: true,
+      },
+    });
+    return {
+      message: 'Verification Successfull!',
       status: 200,
     };
   }

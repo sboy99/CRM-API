@@ -1,14 +1,17 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Patch,
-  Param,
+  Controller,
   Delete,
+  Get,
+  Param,
+  ParseUUIDPipe,
+  Patch,
+  UseGuards,
 } from '@nestjs/common';
-import { UserService } from './user.service';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { UserService } from './user.service';
+import { AccessTokenGuard } from '../auth/guards/token.guard';
+import { User } from '@/decorators/user.decorator';
 
 @Controller('user')
 export class UserController {
@@ -19,8 +22,14 @@ export class UserController {
     return this.userService.findAll();
   }
 
+  @Get('me')
+  @UseGuards(AccessTokenGuard)
+  showMe(@User('userId') userId: string) {
+    return this.userService.showMe(userId);
+  }
+
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.userService.findOne(+id);
   }
 

@@ -1,4 +1,4 @@
-import { TResponse } from '@/resources/auth/types/response.type';
+import { TResponse } from '@/resources/types/response.type';
 import {
   ArgumentsHost,
   Catch,

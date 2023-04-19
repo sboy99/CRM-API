@@ -18,7 +18,7 @@ export class MailService {
       template: './conformation',
       context: {
         name: mailConfigDto.name,
-        url: mailConfigDto.callbaclUrl,
+        url: mailConfigDto.verificationUrl,
       },
     });
   }

@@ -12,5 +12,5 @@ export class MailConfigDto {
 
   @IsString()
   @IsNotEmpty()
-  callbaclUrl: string;
+  verificationUrl: string;
 }

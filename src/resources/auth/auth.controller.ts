@@ -1,14 +1,19 @@
 import {
   Body,
   Controller,
+  Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Ip,
   Post,
+  Query,
+  UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginUserDto } from './dtos/login-user.dto';
 import { RegisterUserDto } from './dtos/register-user.dto';
+import { AccessTokenGuard } from './guards/token.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -21,13 +26,23 @@ export class AuthController {
   }
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  // todo: implement request information
-  login(@Body() loginUserDto: LoginUserDto, @Ip() ip: string) {
-    return this.authService.loginUser(loginUserDto);
+  login(
+    @Body() loginUserDto: LoginUserDto,
+    @Ip() ip: string,
+    @Headers('user-agent') userAgent: string,
+  ) {
+    return this.authService.loginUser(loginUserDto, ip, userAgent);
   }
   @HttpCode(HttpStatus.OK)
+  @UseGuards(AccessTokenGuard)
   @Post('logout')
-  logout() {
-    return this.authService.logoutUser();
+  logout(@Ip() ip: string, @Headers('user-agent') userAgent: string) {
+    return this.authService.logoutUser(ip, userAgent);
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Get('verify-email')
+  verifyEmail(@Query('token') token: string) {
+    return this.authService.verifyEmail(token);
   }
 }
