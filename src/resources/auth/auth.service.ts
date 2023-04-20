@@ -138,13 +138,28 @@ export class AuthService {
    *
    * @returns response
    */
-  async logoutUser(ip: string, userAgent: string): Promise<TResponse> {
+  async logoutCurrentSession(
+    userId: string,
+    sessionId: string,
+  ): Promise<TResponse> {
+    if (sessionId) {
+      await this.prisma.session.deleteMany({
+        where: {
+          id: sessionId,
+          userId,
+        },
+      });
+    }
     return {
-      message: 'Logging out user',
+      message: 'Logged out user from current session',
       status: 200,
     };
   }
-
+  /**
+   *
+   * @param token string
+   * @returns response
+   */
   async verifyEmail(token: string): Promise<TResponse> {
     const payload = await this.tokenService.getDecodedToken(token);
     const user = await this.prisma.user.findFirst({
@@ -168,7 +183,11 @@ export class AuthService {
       status: 200,
     };
   }
-
+  /**
+   *
+   * @param resendVerificationEmailDto ResendVerificationEmailDto
+   * @returns response
+   */
   async resendVerificationEmail(
     resendVerificationEmailDto: ResendVerificationEmailDto,
   ): Promise<TResponse> {
@@ -203,7 +222,13 @@ export class AuthService {
       status: 200,
     };
   }
-
+  /**
+   *
+   * @param user TJwtUser
+   * @param ip string
+   * @param userAgent string
+   * @returns response
+   */
   async refreshToken(
     user: TJwtUser,
     ip: string,

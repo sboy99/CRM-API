@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { PrismaService } from '@/resources/prisma/prisma.service';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
@@ -10,7 +11,7 @@ export class AccessTokenStrategy extends PassportStrategy(
   Strategy,
   'check-access-token',
 ) {
-  constructor(config: ConfigService) {
+  constructor(config: ConfigService, private readonly prisma: PrismaService) {
     super({
       ignoreExpiration: false,
       secretOrKey: config.get('JWT_ACCESS_SECRET'),
@@ -27,7 +28,15 @@ export class AccessTokenStrategy extends PassportStrategy(
     });
   }
 
-  validate(payload: TJwtUser): TJwtUser {
+  async validate(payload: TJwtUser): Promise<TJwtUser> {
+    const hasBlockedSession = await this.prisma.session.findFirst({
+      where: {
+        userId: payload.userId,
+        isBlocked: true,
+      },
+    });
+    if (hasBlockedSession)
+      throw new UnauthorizedException('Unauthorized: blocked');
     return payload;
   }
 }

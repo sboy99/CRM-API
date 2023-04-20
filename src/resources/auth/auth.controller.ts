@@ -1,3 +1,4 @@
+import { SessionId } from '@/decorators';
 import { User } from '@/decorators/user.decorator';
 import {
   Body,
@@ -12,7 +13,6 @@ import {
   Response,
   UseGuards,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { Response as IResponse } from 'express';
 import { TJwtUser } from '../types';
 import { AuthService } from './auth.service';
@@ -29,15 +29,25 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly cookieService: CookieService,
-    private configService: ConfigService,
   ) {}
-
+  /**
+   *
+   * @param registerUserDto RegisterUserDto
+   * @returns response
+   */
   @HttpCode(HttpStatus.CREATED)
   @Post('register')
   register(@Body() registerUserDto: RegisterUserDto) {
     return this.authService.registerUser(registerUserDto);
   }
-
+  /**
+   *
+   * @param res Response
+   * @param loginUserDto LoginUserDto
+   * @param ip string
+   * @param userAgent string
+   * @returns response
+   */
   @HttpCode(HttpStatus.OK)
   @Post('login')
   async login(
@@ -71,14 +81,33 @@ export class AuthController {
     );
     return result;
   }
-
+  /**
+   *
+   * @param res Response
+   * @param sessionId Session ID
+   * @param userId user ID
+   * @returns response
+   */
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtCookieGuard)
   @Post('logout')
-  logout(@Ip() ip: string, @Headers('user-agent') userAgent: string) {
-    return this.authService.logoutUser(ip, userAgent);
+  logout(
+    @Response({ passthrough: true }) res: IResponse,
+    @SessionId() sessionId: string,
+    @User('userId') userId: string,
+  ) {
+    this.cookieService.deleteCookies(res, [
+      'access-token',
+      'refresh-token',
+      'session-id',
+    ]);
+    return this.authService.logoutCurrentSession(userId, sessionId);
   }
-
+  /**
+   *
+   * @param resendVerificationEmailDto ResendVerificationEmailDto
+   * @returns response
+   */
   @HttpCode(HttpStatus.OK)
   @Post('resend-verification-mail')
   async resendVerificationEmail(
@@ -86,17 +115,28 @@ export class AuthController {
   ) {
     return this.authService.resendVerificationEmail(resendVerificationEmailDto);
   }
-
+  /**
+   *
+   * @param token string
+   * @returns response
+   */
   @HttpCode(HttpStatus.OK)
   @Get('verify-email')
   verifyEmail(@Query('token') token: string) {
     return this.authService.verifyEmail(token);
   }
-
+  /**
+   *
+   * @param res Express Response
+   * @param user user payload
+   * @param ip user ip address
+   * @param userAgent user's browser agent
+   * @returns response
+   */
   @HttpCode(HttpStatus.OK)
   @UseGuards(RefreshTokenGuard)
   @Get('refresh')
-  async checkAccessToken(
+  async refreshToken(
     @Response({ passthrough: true }) res: IResponse,
     @User() user: TJwtUser,
     @Ip() ip: string,

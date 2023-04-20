@@ -5,6 +5,7 @@ import { Response } from 'express';
 @Injectable()
 export class CookieService {
   constructor(private configService: ConfigService) {}
+
   createCookie(res: Response, name: string, value: string, exp: number) {
     res.cookie(name, value, {
       httpOnly: true,
@@ -12,5 +13,9 @@ export class CookieService {
       secure: this.configService.get('NODE_ENV') === 'production',
       signed: true,
     });
+  }
+
+  deleteCookies(res: Response, cookies: string[]) {
+    cookies.forEach((cookie) => res.clearCookie(cookie));
   }
 }
