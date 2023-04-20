@@ -12,8 +12,8 @@ export class TwilioService {
 
   async sendSMS(sendSmsDto: SendSmsDto) {
     return this.twilio.client.messages.create({
-      to: '+12316851234',
-      from: '+15555555555',
+      to: '+919609327424',
+      from: '+14066374130',
       body: sendSmsDto.body,
     });
   }

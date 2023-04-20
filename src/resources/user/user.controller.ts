@@ -1,3 +1,4 @@
+import { User } from '@/decorators/user.decorator';
 import {
   Body,
   Controller,
@@ -8,10 +9,9 @@ import {
   Patch,
   UseGuards,
 } from '@nestjs/common';
+import { AccessTokenGuard } from '../auth/guards';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UserService } from './user.service';
-import { AccessTokenGuard } from '../auth/guards/token.guard';
-import { User } from '@/decorators/user.decorator';
 
 @Controller('user')
 export class UserController {

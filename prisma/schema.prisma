@@ -23,7 +23,7 @@ model User {
   avatar     String?   @default("")
   balance    Int       @default(0)
   role       Role      @default(customer)
-  Session    Session?
+  Session    Session[]
   Employee   Employee?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt()
@@ -47,7 +47,7 @@ enum Role {
 
 model Session {
   id          String   @id @default(uuid())
-  userId      String   @unique() @map("user_id")
+  userId      String   @map("user_id")
   User        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   refreshHash String   @map("refresh_hash")
   isBlocked   Boolean  @default(false) @map("is_blocked")
@@ -56,6 +56,7 @@ model Session {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt() @map("updated_at")
 
+  @@unique([userId, ip])
   @@map("sessions")
 }
 

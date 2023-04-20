@@ -6,7 +6,13 @@ import { TwilioService } from '../twilio/twilio.service';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { SessionService } from './session/session.service';
+import {
+  AccessTokenStrategy,
+  JwtCookieStrategy,
+  RefreshTokenStrategy,
+} from './strategies';
 import { TokenService } from './token/token.service';
+import { CookieService } from './cookie/cookie.service';
 
 @Module({
   imports: [
@@ -26,6 +32,10 @@ import { TokenService } from './token/token.service';
     SessionService,
     TokenService,
     JwtService,
+    AccessTokenStrategy,
+    RefreshTokenStrategy,
+    JwtCookieStrategy,
+    CookieService,
   ],
 })
 export class AuthModule {}

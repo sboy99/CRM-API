@@ -3,6 +3,7 @@ import { AllExceptionsFilter } from '@/filters/all-exceptions.filter';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import * as cookieParser from 'cookie-parser';
 import * as morgan from 'morgan';
 
 async function bootstrap() {
@@ -17,6 +18,8 @@ async function bootstrap() {
   // filters
   const httpAdapter = app.get(HttpAdapterHost);
   app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
+  // packages
+  app.use(cookieParser(process.env.COOKIE_SECRET));
   // logging
   app.use(morgan('dev'));
   // versioning

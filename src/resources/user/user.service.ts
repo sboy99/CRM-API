@@ -9,6 +9,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 export class UserService {
   constructor(private readonly prisma: PrismaService) {}
   async showMe(userId: string): Promise<TResponse<Omit<User, 'password'>>> {
+    console.log(userId);
     const user = await this.prisma.user.findUnique({
       where: {
         id: userId,

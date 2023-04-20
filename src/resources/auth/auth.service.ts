@@ -2,15 +2,18 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { HashService } from '../hash/hash.service';
 import { MailService } from '../mail/mail.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TwilioService } from '../twilio/twilio.service';
+import { TJwtUser } from '../types';
 import { TResponse } from '../types/response.type';
 import { LoginUserDto } from './dtos/login-user.dto';
 import { RegisterUserDto } from './dtos/register-user.dto';
+import { ResendVerificationEmailDto } from './dtos/resend-verification-mail.dto';
 import { SessionService } from './session/session.service';
 import { TokenService } from './token/token.service';
 
@@ -87,6 +90,7 @@ export class AuthService {
       {
         accessToken: string;
         refreshToken: string;
+        sessionId: string;
       }
     >
   > {
@@ -113,7 +117,7 @@ export class AuthService {
       role: user.role,
     });
     //  create a active session
-    await this.sessionService.createSession({
+    const sesssion = await this.sessionService.createSession({
       userId: user.id,
       ip,
       userAgent,
@@ -123,7 +127,11 @@ export class AuthService {
     return {
       message: 'Login Successfull!',
       status: 200,
-      tokens: authTokens,
+      tokens: {
+        accessToken: authTokens.accessToken,
+        refreshToken: authTokens.refreshToken,
+        sessionId: sesssion.id,
+      },
     };
   }
   /**
@@ -158,6 +166,97 @@ export class AuthService {
     return {
       message: 'Verification Successfull!',
       status: 200,
+    };
+  }
+
+  async resendVerificationEmail(
+    resendVerificationEmailDto: ResendVerificationEmailDto,
+  ): Promise<TResponse> {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        email: resendVerificationEmailDto.email,
+      },
+    });
+    if (!user) throw new NotFoundException('User does not exist');
+    if (user.isVerified)
+      throw new BadRequestException('User is already verified');
+
+    // generate verification token
+    const verificationToken = await this.tokenService.generateVerificationToken(
+      {
+        userId: user.id,
+        email: user.email,
+      },
+    );
+    // send verification email
+    await this.mailService.sendVerificationEmail({
+      to: user.email,
+      name: user.name,
+      verificationUrl: `${this.configService.get(
+        'ORIGIN',
+      )}/auth/verify-email?token=${verificationToken}`,
+    });
+
+    return {
+      message:
+        'Verification email sent successfully!, We have sent you a verification email. Please check your inbox',
+      status: 200,
+    };
+  }
+
+  async refreshToken(
+    user: TJwtUser,
+    ip: string,
+    userAgent: string,
+  ): Promise<
+    TResponse<
+      unknown,
+      {
+        accessToken: string;
+        refreshToken: string;
+        sessionId: string;
+      }
+    >
+  > {
+    const currentSession = await this.prisma.session.findUnique({
+      where: {
+        id: user.sessionId,
+      },
+    });
+    if (!currentSession) {
+      throw new UnauthorizedException('Session Expired!, please re-login');
+    }
+
+    const hasAuthenticRefreshToken = await this.hashService.compareHash(
+      user.refreshToken.split('.')[2],
+      currentSession.refreshHash,
+    );
+
+    if (!hasAuthenticRefreshToken) {
+      throw new UnauthorizedException('Token verification failed');
+    }
+
+    // generate auth tokens
+    const authTokens = await this.tokenService.generateAuthTokens({
+      userId: user.userId,
+      email: user.email,
+      role: user.role,
+    });
+    //  create a active session
+    const sesssion = await this.sessionService.createSession({
+      userId: user.userId,
+      ip,
+      userAgent,
+      refreshToken: authTokens.refreshToken,
+    });
+    return {
+      message: 'Refresh was successful',
+      status: 200,
+      tokens: {
+        accessToken: authTokens.accessToken,
+        refreshToken: authTokens.refreshToken,
+        sessionId: sesssion.id,
+      },
     };
   }
 }

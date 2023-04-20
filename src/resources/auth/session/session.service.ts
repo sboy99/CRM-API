@@ -14,11 +14,21 @@ export class SessionService {
     const refreshHash = await this.hashService.getHash(
       createSessionDto.refreshToken.split('.')[2],
     );
-    const session = await this.prisma.session.create({
-      data: {
+    const session = await this.prisma.session.upsert({
+      where: {
+        userId_ip: {
+          userId: createSessionDto.userId,
+          ip: createSessionDto.ip,
+        },
+      },
+      create: {
         ip: createSessionDto.ip,
         userAgent: createSessionDto.userAgent,
         userId: createSessionDto.userId,
+        refreshHash,
+      },
+      update: {
+        userAgent: createSessionDto.userAgent,
         refreshHash,
       },
     });

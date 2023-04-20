@@ -7,6 +7,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { HttpAdapterHost } from '@nestjs/core';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -22,10 +23,24 @@ export class AllExceptionsFilter implements ExceptionFilter {
         ? exception.getStatus()
         : HttpStatus.INTERNAL_SERVER_ERROR;
 
+    // filter error  messages
     function getErrorDetails() {
       if (exception instanceof HttpException) {
         const errorRes = exception.getResponse() as any;
         return errorRes.message;
+      }
+
+      if (exception instanceof PrismaClientKnownRequestError) {
+        console.log(exception.code, 'test');
+
+        if (exception.code === 'P2002') {
+          if (exception.meta as any) {
+            const violatedFields = exception.meta.target as Array<string>;
+            return violatedFields.map(
+              (field) => `Another value of field ${field} already exist`,
+            );
+          }
+        }
       }
       return 'Something went wrong';
     }
